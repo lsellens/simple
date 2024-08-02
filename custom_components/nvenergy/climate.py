@@ -32,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 BASE_URL = "https://nve.ecofactor.com/ws/v1.0/"
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
+async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
     _LOGGER.debug("Creating NVE Thermostats")
 
     if CONF_USERNAME not in config or len(config[CONF_USERNAME]) == 0:
@@ -51,17 +51,17 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     client = TheSimpleClient(base_url)
     _LOGGER.info("Authenticating")
-    client.auth(config[CONF_USERNAME], config[CONF_PASSWORD])
+    await hass.async_add_executor_job(client.auth, config[CONF_USERNAME], config[CONF_PASSWORD])
 
-    thermostat_ids = client.getThermostatIds()
+    thermostat_ids = await hass.async_add_executor_job(client.getThermostatIds)
     nve_thermostats = []
 
     for thermostat_id in thermostat_ids:
-        simple_thermostat = client.createThermostat(thermostat_id)
+        simple_thermostat = await hass.async_add_executor_job(client.createThermostat, thermostat_id)
         nve_thermostat = NVEThermostat(simple_thermostat)
         nve_thermostats.append(nve_thermostat)
 
-    add_entities(nve_thermostats)
+    async_add_entities(nve_thermostats)
 
 
 class NVEThermostatError(Exception):
@@ -173,7 +173,7 @@ class NVEThermostat(ClimateEntity):
     def unique_id(self):
         return self._thermostat.thermostat_id
 
-    def set_hvac_mode(self, hvac_mode: str):
+    async def async_set_hvac_mode(self, hvac_mode: str):
         simpletherm_mode = ""
 
         if hvac_mode == HVACMode.COOL:
@@ -185,36 +185,36 @@ class NVEThermostat(ClimateEntity):
         else:
             raise NVEThermostatError("Unsupported HVAC mode: %s", hvac_mode)
 
-        self._thermostat.set_mode(simpletherm_mode)
+        await self.hass.async_add_executor_job(self._thermostat.set_mode, simpletherm_mode)
 
-    def set_fan_mode(self, fan_mode):
+    async def async_set_fan_mode(self, fan_mode):
         if fan_mode == FAN_AUTO:
-            self._thermostat.set_fan_mode('auto')
+            await self.hass.async_add_executor_job(self._thermostat.set_fan_mode, 'auto')
         elif fan_mode == FAN_ON:
-            self._thermostat.set_fan_mode('on')
+            await self.hass.async_add_executor_job(self._thermostat.set_fan_mode, 'on')
 
-    def set_temperature(self, **kwargs):
+    async def async_set_temperature(self, **kwargs):
         _LOGGER.debug("Setting temperature")
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
 
         _LOGGER.debug("Setting current temp to %f", temperature)
-        self._thermostat.set_temp(temperature)
+        await self.hass.async_add_executor_job(self._thermostat.set_temp, temperature)
 
-    def update(self):
+    async def async_update(self):
         _LOGGER.debug("Refreshing thermostat")
         retries = 3
         success = False
         while retries > 0:
             try:
-                self._thermostat.refresh()
+                await self.hass.async_add_executor_job(self._thermostat.refresh)
                 success = True
                 break
             except Exception as ex:
                 _LOGGER.warn("Refresh exception: %s", str(ex))
                 _LOGGER.debug("Attempting refresh token")
-                self._thermostat.client.getToken()
+                await self.hass.async_add_executor_job(self._thermostat.client.getToken)
 
             retries -= 1
 
