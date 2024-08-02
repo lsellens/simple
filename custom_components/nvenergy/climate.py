@@ -1,42 +1,30 @@
 import logging
-
 from custom_components.nvenergy.thesimple import (
     TheSimpleClient,
     TheSimpleThermostat,
     TheSimpleError,
 )
 
-from homeassistant.components.climate import ClimateEntity
+from homeassistant.components.climate import (
+    ClimateEntity,
+    ClimateEntityFeature,
+    HVACAction,
+    HVACMode,
+)
 
 from homeassistant.components.climate.const import (
-    CURRENT_HVAC_COOL,
-    CURRENT_HVAC_FAN,
-    CURRENT_HVAC_HEAT,
-    CURRENT_HVAC_IDLE,
-    CURRENT_HVAC_OFF,
     FAN_AUTO,
     FAN_ON,
-    HVAC_MODE_COOL,
-    HVAC_MODE_HEAT,
-    HVAC_MODE_HEAT_COOL,
-    HVAC_MODE_OFF,
     PRESET_AWAY,
     PRESET_NONE,
-    SUPPORT_AUX_HEAT,
-    SUPPORT_FAN_MODE,
-    SUPPORT_PRESET_MODE,
-    SUPPORT_TARGET_HUMIDITY,
-    SUPPORT_TARGET_TEMPERATURE,
-    SUPPORT_TARGET_TEMPERATURE_RANGE,
 )
 
 from homeassistant.const import (
     ATTR_TEMPERATURE,
     CONF_PASSWORD,
     CONF_USERNAME,
-    TEMP_CELSIUS,
     CONF_NAME,
-    TEMP_FAHRENHEIT,
+    UnitOfTemperature,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -121,30 +109,30 @@ class NVEThermostat(ClimateEntity):
         simpletherm_mode = self._thermostat.hvacMode
 
         if simpletherm_mode == "off" and simpletherm_state == "off":
-            return CURRENT_HVAC_OFF
+            return HVACAction.OFF
         if simpletherm_state == "cool":
-            return CURRENT_HVAC_COOL
+            return HVACAction.COOLING
         elif simpletherm_state == "heat":
-            return CURRENT_HVAC_HEAT
+            return HVACAction.HEATING
         elif simpletherm_state == "off":
-            return CURRENT_HVAC_IDLE
+            return HVACAction.IDLE
         else:
             return None
 
     @property
     def hvac_mode(self):
         if self._thermostat.hvacMode == "cool":
-            return HVAC_MODE_COOL
+            return HVACMode.COOL
         elif self._thermostat.hvacMode == "heat":
-            return HVAC_MODE_HEAT
+            return HVACMode.HEAT
         elif self._thermostat.hvacMode == "off":
-            return HVAC_MODE_OFF
+            return HVACMode.OFF
         else:
             return None
 
     @property
     def hvac_modes(self):
-        return [HVAC_MODE_COOL, HVAC_MODE_HEAT, HVAC_MODE_OFF]
+        return [HVACMode.COOL, HVACMode.HEAT, HVACMode.OFF]
 
     @property
     def max_temp(self):
@@ -167,19 +155,19 @@ class NVEThermostat(ClimateEntity):
 
     @property
     def supported_features(self):
-        return SUPPORT_TARGET_TEMPERATURE | SUPPORT_FAN_MODE
+        return ClimateEntityFeature.TARGET_TEMPERATURE | ClimateEntityFeature.FAN_MODE | ClimateEntityFeature.TURN_OFF | ClimateEntityFeature.TURN_ON
 
     @property
     def target_temperature(self):
-        if self.hvac_mode == HVAC_MODE_COOL:
+        if self.hvac_mode == HVACMode.COOL:
             return self._thermostat.cool_setpoint
-        if self.hvac_mode == HVAC_MODE_HEAT:
+        if self.hvac_mode == HVACMode.HEAT:
             return self._thermostat.heat_setpoint
         return None
 
     @property
     def temperature_unit(self):
-        return TEMP_FAHRENHEIT
+        return UnitOfTemperature.FAHRENHEIT
     
     @property
     def unique_id(self):
@@ -188,11 +176,11 @@ class NVEThermostat(ClimateEntity):
     def set_hvac_mode(self, hvac_mode: str):
         simpletherm_mode = ""
 
-        if hvac_mode == HVAC_MODE_COOL:
+        if hvac_mode == HVACMode.COOL:
             simpletherm_mode = "cool"
-        elif hvac_mode == HVAC_MODE_HEAT:
+        elif hvac_mode == HVACMode.HEAT:
             simpletherm_mode = "heat"
-        elif hvac_mode == HVAC_MODE_OFF:
+        elif hvac_mode == HVACMode.OFF:
             simpletherm_mode = "off"
         else:
             raise NVEThermostatError("Unsupported HVAC mode: %s", hvac_mode)
