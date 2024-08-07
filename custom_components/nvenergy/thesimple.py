@@ -1,24 +1,27 @@
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
+"""The Simple/Ecofactor library"""
+
 import base64
 import hashlib
-import re
-import datetime
 import logging
 import random
-from types import resolve_bases
-import requests
+import re
 import time
+
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
+import requests
+
+from homeassistant.components.climate import (
+    FAN_AUTO,
+    FAN_ON,
+    PRESET_AWAY,
+    PRESET_NONE,
+    HVACMode,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-FAN_MODES = ["on", "auto"]
-HVAC_MODES = ["COOL", "HEAT"]
-HVAC_STATE = ["cool", "heat", "off"]
-SETPOINT_REASONS = ["mo", "schedule"]
+
 HTTP_SUCCESS_START = 200
 HTTP_SUCCESS_END = 299
 HTTP_FORBIDDEN_START = 401
@@ -52,10 +55,17 @@ class TheSimpleClient:
         }
         self._username = ""
         self._http_sess = None
-        self.userid = ""
+        self._userid = ""
+        self._location_id = None
         self._refreshToken = ""
         self._publicKey = None
         self._noCacheNum = random.randint(1, 200000000000)
+        self._realm = ""
+        self._nonce = ""
+        self._opaque = ""
+
+    def get_location_id(self):
+        return self._location_id
 
     @property
     def httpSess(self):
@@ -88,9 +98,7 @@ class TheSimpleClient:
         step2 = hashlib.sha1(
             (username + ":" + realm + ":" + pwhash).encode("utf-8")
         ).hexdigest()
-        response = hashlib.sha1((step2 + ":" + nonce).encode("utf-8")).hexdigest()
-
-        return response
+        return hashlib.sha1((step2 + ":" + nonce).encode("utf-8")).hexdigest()
 
     def clearToken(self):
         self._token = ""
@@ -105,8 +113,7 @@ class TheSimpleClient:
             password.encode("utf-8"), padding.PKCS1v15()
         )
 
-        encrypted_pw = base64.b64encode(encryptedPwBytes).decode("utf-8")
-        return encrypted_pw
+        return base64.b64encode(encryptedPwBytes).decode("utf-8")
 
     def getNonce(self):
         url = "authenticate/nonce"
@@ -115,7 +122,7 @@ class TheSimpleClient:
 
         www_auth = r.json()["WWW-Authenticate"]
 
-        p = re.compile('DigestE realm="(\w+)", nonce="(\w+)", opaque="(\w+)"')
+        p = re.compile('DigestE realm="(\\w+)", nonce="(\\w+)", opaque="(\\w+)"')
         m = p.match(www_auth)
 
         if m:
@@ -123,7 +130,7 @@ class TheSimpleClient:
             self._nonce = m.group(2)
             self._opaque = m.group(3)
         else:
-            raise TheSimpleError("Unable to parse nonce response: %s", www_auth)
+            raise TheSimpleError(f"Unable to parse nonce response: {www_auth}")
 
     def getPublicKey(self):
         url = "public_key"
@@ -136,9 +143,9 @@ class TheSimpleClient:
         url = "user"
         r = self.http_request("GET", url, None, True)
 
-        location_id = r.json()["location_id_list"][locationIndex]
+        self._location_id = r.json()["location_id_list"][locationIndex]
 
-        url = "location/" + str(location_id)
+        url = f"location/{self._location_id}"
         r = self.http_request("GET", url, None, True)
 
         return r.json()["thermostatIdList"]
@@ -147,14 +154,15 @@ class TheSimpleClient:
         _LOGGER.debug("getToken")
 
         self.clearToken()
-        authstr = 'DigestE username="%s", realm="Consumer", nonce="%s", response="%s", opaque="%s"' % (
-            self._username,
-            self._authinfo["nonce"],
-            self._authinfo["response"],
-            self._authinfo["opaque"],
+
+        authstr = (
+            f'DigestE username="{self._username}", '
+            f'realm="Consumer", nonce="{self._authinfo["nonce"]}", '
+            f'response="{self._authinfo["response"]}", '
+            f'opaque="{self._authinfo["opaque"]}"'
         )
 
-        url = self._base_url + "authenticate"
+        url = f"{self._base_url}authenticate"
 
         r = self.httpSess.post(
             url,
@@ -166,26 +174,28 @@ class TheSimpleClient:
         )
 
         _LOGGER.debug("response code: %s, response text: %s", r.status_code, r.text)
-        if r.status_code >= HTTP_SUCCESS_START and r.status_code <= HTTP_SUCCESS_END:
+
+        if HTTP_SUCCESS_START <= r.status_code <= HTTP_SUCCESS_END:
             r_json = r.json()
             self._token = r_json["access_token"]
             self._userid = r_json["user_id"]
             self._refreshToken = r_json["refresh_token"]
-        elif r.stat >= HTTP_FORBIDDEN_START and r.status_code <= HTTP_FORBIDDEN_END:
+        elif HTTP_FORBIDDEN_START <= r.status_code <= HTTP_FORBIDDEN_END:
             raise AuthError(
-                "Authentication Error (code: %s) (response: %s)"
-                % (r.status_code, r.text)
+                f"Authentication Error (code: {r.status_code}) (response: {r.text})"
             )
         else:
             raise APIError(
-                "Invalid HTTP response (code: %s) (response: %s)"
-                % (r.status_code, r.text)
+                f"Invalid HTTP response (code: {r.status_code}) (response: {r.text})"
             )
 
     def http_request(self, method, req_url, json_req_body=None, authenticated=False):
         _LOGGER.debug(
-            "HTTP  request (method: %s, url: %s, json: %s, authenticated: %s)", method, req_url, 
-                json_req_body, authenticated
+            "HTTP request (method: %s, url: %s, json: %s, authenticated: %s)",
+            method,
+            req_url,
+            json_req_body,
+            authenticated,
         )
         if authenticated and len(self._token) == 0:
             raise AuthError("No token, authentication required")
@@ -200,25 +210,25 @@ class TheSimpleClient:
             r = self.httpSess.get(url, json=json_req_body, headers=reqheaders)
         elif method == "PATCH":
             r = self.httpSess.patch(url, json=json_req_body, headers=reqheaders)
+        elif method == "PUT":
+            r = self.httpSess.put(url, json=json_req_body, headers=reqheaders)
+        elif method == "DELETE":
+            r = self.httpSess.delete(url, json=json_req_body, headers=reqheaders)
 
         _LOGGER.debug(
-            "HTTP Response (status code: %s, response: %s)", r.status_code, r.text 
-        ) 
+            "HTTP Response (status code: %s, response: %s)", r.status_code, r.text
+        )
 
-        if r.status_code >= HTTP_SUCCESS_START and r.status_code <= HTTP_SUCCESS_END:
+        if HTTP_SUCCESS_START <= r.status_code <= HTTP_SUCCESS_END:
             return r
-        elif (
-            r.status_code >= HTTP_FORBIDDEN_START
-            and r.status_code <= HTTP_FORBIDDEN_END
-        ):
+        if HTTP_FORBIDDEN_START <= r.status_code <= HTTP_FORBIDDEN_END:
             self.clearToken()
             raise APIError(
-                "HTTP response forbidden (code: %s) (response: %s)", r.status_code, r.text
+                f"HTTP response forbidden (code: {r.status_code}) (response: {r.text})"
             )
-        else:
-            raise APIError(
-                "Invalid HTTP response (code: %s) (response: %s)", r.status_code, r.text
-            )
+        raise APIError(
+            f"Invalid HTTP response (code: {r.status_code}) (response: {r.text})"
+        )
 
 
 class TheSimpleThermostat:
@@ -241,7 +251,11 @@ class TheSimpleThermostat:
         self._min_temp = MIN_TEMP_DEFAULT
         self._schedule_mode = None
         self._supported_modes = []
-        self._away_enddts = None
+        self._away_details = None
+        self._preset_mode = None
+        self._location_id = self._client.get_location_id()
+        self._away_cool_setpoint = MAX_TEMP_DEFAULT
+        self._away_heat_setpoint = MIN_TEMP_DEFAULT
 
         self.get_metadata()
         self.refresh()
@@ -261,6 +275,10 @@ class TheSimpleThermostat:
     @property
     def current_temp(self):
         return self._current_temp
+
+    @property
+    def preset_mode(self):
+        return self._preset_mode
 
     @property
     def fan_mode(self):
@@ -283,8 +301,8 @@ class TheSimpleThermostat:
         return self._hvac_state
 
     @property
-    def id(self):
-        return self._thermostat_id
+    def location_id(self):
+        return self._location_id
 
     @property
     def last_update(self):
@@ -314,12 +332,23 @@ class TheSimpleThermostat:
     def thermostat_id(self):
         return self._thermostat_id
 
+    @property
+    def away_cool_setpoint(self):
+        return self._away_cool_setpoint
+
+    @property
+    def away_heat_setpoint(self):
+        return self._away_heat_setpoint
+
     def get_metadata(self):
-        url = "thermostat/" + str(self._thermostat_id)
+        url = f"thermostat/{self._thermostat_id}"
 
         r = self._client.http_request("GET", url, None, True)
 
         r_json = r.json()
+
+        # Log the received JSON response
+        _LOGGER.debug("get_metadata: Received JSON response: %s", r_json)
 
         self._name = r_json["name"]
         self._schedule_mode = r_json["schedule_mode"]
@@ -327,26 +356,45 @@ class TheSimpleThermostat:
         self._max_temp = float(r_json["model"]["max_temperature"])
         self._supported_modes = r_json["hvac_control"]
 
+    def get_away_settings(self):
+        url = f"location/{self._location_id}/away_settings"
+
+        r = self._client.http_request("GET", url, None, True)
+
+        r_json = r.json()
+
+        self._away_cool_setpoint = float(r_json["cool_setpoint"])
+        self._away_heat_setpoint = float(r_json["heat_setpoint"])
+
     def set_fan_mode(self, fan_mode):
+        if fan_mode == FAN_ON:
+            set_fan_mode = "on"
+        elif fan_mode == FAN_AUTO:
+            set_fan_mode = "auto"
+        else:
+            raise TheSimpleError(f"Invalid fan mode: {fan_mode}")
 
-        if fan_mode != "on" and fan_mode != "auto":
-            raise TheSimpleError("Invalid fan mode: %s", fan_mode)
+        url = f"thermostat/{self._thermostat_id}/state"
 
-        url = "thermostat/" + str(self._thermostat_id) + "/state"
-
-        json_req = {"fan_mode": fan_mode}
+        json_req = {"fan_mode": set_fan_mode}
 
         self._client.http_request("PATCH", url, json_req, True)
 
         self._fan_mode = fan_mode
 
     def set_mode(self, mode):
-        if mode != "cool" and mode != "heat" and mode != "off":
-            raise TheSimpleError("Invalid HVAC mode: %s", mode)
+        if mode == HVACMode.COOL:
+            set_mode = "cool"
+        elif mode == HVACMode.HEAT:
+            set_mode = "heat"
+        elif mode == HVACMode.OFF:
+            set_mode = "off"
+        else:
+            raise TheSimpleError(f"Invalid HVAC mode: {mode}")
 
-        url = "thermostat/" + str(self._thermostat_id) + "/state"
+        url = f"thermostat/{self._thermostat_id}/state"
 
-        json_req = {"hvac_mode": mode}
+        json_req = {"hvac_mode": set_mode}
 
         self._client.http_request("PATCH", url, json_req, True)
 
@@ -354,42 +402,72 @@ class TheSimpleThermostat:
         if temp < self._min_temp or temp > self._max_temp:
             return
 
-        url = "thermostat/" + str(self._thermostat_id) + "/state"
+        url = f"thermostat/{self._thermostat_id}/state"
 
         json_req = {}
 
-        if self.hvacMode == "cool":
+        if self.hvacMode == HVACMode.COOL:
             json_req["cool_setpoint"] = int(temp)
             self._cool_setpoint = int(temp)
-        elif self.hvacMode == "heat":
+        elif self.hvacMode == HVACMode.HEAT:
             json_req["heat_setpoint"] = int(temp)
             self._heat_setpoint = int(temp)
-        elif self.hvacMode == "off":
+        elif self.hvacMode == HVACMode.OFF:
             return
         else:
             raise TheSimpleError(
-                "set_temp: Unable to determine current HVAC Mode: %s", self.hvacMode
+                f"set_temp: Unable to determine current HVAC Mode: {self.hvacMode}"
             )
 
         self._client.http_request("PATCH", url, json_req, True)
 
         # if successful, set internal state so we don't have to wait on a refresh
-        if self.hvacMode == "cool":
+        if self.hvacMode == HVACMode.COOL:
             self._cool_setpoint = int(temp)
-        elif self.hvacMode == "heat":
+        elif self.hvacMode == HVACMode.HEAT:
             self._heat_setpoint = int(temp)
 
+    def set_preset_mode(self, preset):
+        if preset not in [PRESET_AWAY, PRESET_NONE]:
+            raise TheSimpleError(f"Invalid HVAC mode: {preset}")
+
+        # Check if the thermostat is off
+        if self._hvac_mode == "off":
+            _LOGGER.warning(
+                "Cannot set preset mode to %s because thermostat is off", preset
+            )
+            self._preset_mode = PRESET_NONE
+            return
+
+        self.get_away_settings()
+        url = f"thermostat/{self._thermostat_id}/away"
+
+        if preset == PRESET_AWAY:
+            json_req = {
+                "cool_setpoint": self._away_cool_setpoint,
+                "heat_setpoint": self._away_heat_setpoint,
+                "end_ts": "2050-12-31T00:00:00+00:00",
+            }
+            self._client.http_request("PUT", url, json_req, True)
+            self._preset_mode = PRESET_AWAY
+
+        elif preset == PRESET_NONE:
+            self._client.http_request("DELETE", url, None, True)
+            self._preset_mode = PRESET_NONE
+
     def refresh(self):
-        url = "thermostat/" + str(self._thermostat_id) + "/state"
+        url = f"thermostat/{self._thermostat_id}/state"
 
         r = self._client.http_request("GET", url, None, True)
-
         r_json = r.json()
+
+        # Log the received JSON response
+        _LOGGER.debug("refresh: Received JSON response: %s", r_json)
+
         self._connected = r_json["connected"]
         self._setpoint_reason = r_json["setpoint_reason"]
 
-        thermostat_info = 'best_known_current_state_thermostat_data'
-        #thermostat_info = "last_collected_thermostat_data"
+        thermostat_info = "best_known_current_state_thermostat_data"
         self._current_temp = round(float(r_json[thermostat_info]["temperature"]), 1)
         self._hold_mode = r_json[thermostat_info]["hold_mode"]
         self._fan_mode = r_json[thermostat_info]["fan_mode"]
@@ -400,10 +478,10 @@ class TheSimpleThermostat:
         self._heat_setpoint = r_json[thermostat_info]["heat_setpoint"]
         self._last_update = time.time()
 
-        if (
-            "away_details" in r_json[thermostat_info]
-            and "end_ts" in r_json[thermostat_info]["away_details"]
-        ):
-            self._away_enddts = r_json[thermostat_info]["away_details"]["end_ts"]
+        if "end_ts" in r_json["away_details"]:
+            self._away_details = r_json["away_details"]["end_ts"]
+            self._preset_mode = PRESET_AWAY
         else:
-            self._away_enddts = None
+            self._away_details = None
+            self._preset_mode = PRESET_NONE
+
