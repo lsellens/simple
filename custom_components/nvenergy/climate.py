@@ -128,7 +128,13 @@ class NVEThermostat(ClimateEntity):
     @property
     def hvac_mode(self) -> HVACMode:
         """Return the current mode."""
-        return self._thermostat.hvacMode
+        simpletherm_mode = self._thermostat.hvacMode
+
+        if simpletherm_mode in ["auto", "autocool", "autoheat"]:
+            return HVACMode.AUTO
+        else:
+            # You should likely map other modes here as well
+            return simpletherm_mode
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -139,6 +145,8 @@ class NVEThermostat(ClimateEntity):
             modes.append(HVACMode.COOL)
         if "HEAT" in self._thermostat.supportedModes:
             modes.append(HVACMode.HEAT)
+        if "COOL" in self._thermostat.supportedModes and "HEAT" in self._thermostat.supportedModes:
+            modes.append(HVACMode.AUTO)
 
         return modes
 

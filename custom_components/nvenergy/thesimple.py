@@ -387,6 +387,8 @@ class TheSimpleThermostat:
             set_mode = "cool"
         elif mode == HVACMode.HEAT:
             set_mode = "heat"
+        elif mode == HVACMode.AUTO:
+            set_mode = "auto"
         elif mode == HVACMode.OFF:
             set_mode = "off"
         else:
