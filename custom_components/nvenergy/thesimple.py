@@ -1,4 +1,4 @@
-"""The Simple/Ecofactor library"""
+"""TheSimple/Ecofactor library."""
 
 import base64
 import hashlib
@@ -32,19 +32,22 @@ MIN_TEMP_DEFAULT = 50
 
 
 class TheSimpleError(Exception):
-    pass
+    """Base exception for TheSimple/Ecofactor errors."""
 
 
 class APIError(TheSimpleError):
-    pass
+    """Exception raised for API errors in TheSimple integration."""
 
 
 class AuthError(TheSimpleError):
-    pass
+    """Exception raised for authentication errors in TheSimple integration."""
 
 
 class TheSimpleClient:
-    def __init__(self, base_url):
+    """Client for interacting with TheSimple/Ecofactor API."""
+
+    def __init__(self, base_url) -> None:
+        """Initialize TheSimpleClient with the given base URL."""
         self._base_url = base_url
         self._token = ""
         self._authinfo = {
@@ -65,10 +68,12 @@ class TheSimpleClient:
         self._opaque = ""
 
     def get_location_id(self):
+        """Return the current location ID."""
         return self._location_id
 
     @property
     def httpSess(self):
+        """Return the HTTP session, creating it if necessary."""
         if self._http_sess is None:
             self._http_sess = requests.Session()
             self._http_sess.headers.update({"X-Requested-With": "XMLHttpRequest"})
@@ -76,6 +81,17 @@ class TheSimpleClient:
         return self._http_sess
 
     def auth(self, username, password):
+        """Authenticate with TheSimple/Ecofactor API using the provided username and password.
+
+        Args:
+            username: The username for authentication.
+            password: The password for authentication.
+
+        Raises:
+            AuthError: If authentication fails.
+            TheSimpleError: If unable to parse nonce response.
+
+        """
         self.getPublicKey()
         self.getNonce()
 
@@ -85,6 +101,16 @@ class TheSimpleClient:
         self.authwithdetails(username, encrypted_pw, self._nonce, resp, self._opaque)
 
     def authwithdetails(self, user, encpass, nonce, resp, opaque):
+        """Authenticate with provided details and obtain an access token.
+
+        Args:
+            user: The username.
+            encpass: The encrypted password.
+            nonce: The nonce value.
+            resp: The response hash.
+            opaque: The opaque value.
+
+        """
         self._authinfo["nonce"] = nonce
         self._authinfo["response"] = resp
         self._authinfo["opaque"] = opaque
@@ -94,6 +120,18 @@ class TheSimpleClient:
         self.getToken()
 
     def buildResponse(self, username, password, realm, nonce):
+        """Build the response hash for digest authentication.
+
+        Args:
+            username: The username for authentication.
+            password: The password for authentication.
+            realm: The authentication realm.
+            nonce: The nonce value.
+
+        Returns:
+            The SHA-1 hash response string.
+
+        """
         pwhash = hashlib.sha1(password.encode("utf-8")).hexdigest()
         step2 = hashlib.sha1(
             (username + ":" + realm + ":" + pwhash).encode("utf-8")
@@ -101,14 +139,33 @@ class TheSimpleClient:
         return hashlib.sha1((step2 + ":" + nonce).encode("utf-8")).hexdigest()
 
     def clearToken(self):
+        """Clear the current access and refresh tokens and reset the HTTP session."""
         self._token = ""
         self._refreshToken = ""
         self._http_sess = None
 
     def createThermostat(self, thermostat_id):
+        """Create and return a TheSimpleThermostat instance for the given thermostat ID.
+
+        Args:
+            thermostat_id: The ID of the thermostat to create.
+
+        Returns:
+            TheSimpleThermostat: An instance representing the specified thermostat.
+
+        """
         return TheSimpleThermostat(self, thermostat_id)
 
     def encryptPassword(self, password):
+        """Encrypt the given password using the loaded public key.
+
+        Args:
+            password: The password string to encrypt.
+
+        Returns:
+            The base64-encoded encrypted password string.
+
+        """
         encryptedPwBytes = self._publicKey.encrypt(
             password.encode("utf-8"), padding.PKCS1v15()
         )
@@ -116,6 +173,7 @@ class TheSimpleClient:
         return base64.b64encode(encryptedPwBytes).decode("utf-8")
 
     def getNonce(self):
+        """Retrieve and parse the authentication nonce from the API."""
         url = "authenticate/nonce"
 
         r = self.http_request("GET", url)
@@ -133,6 +191,7 @@ class TheSimpleClient:
             raise TheSimpleError(f"Unable to parse nonce response: {www_auth}")
 
     def getPublicKey(self):
+        """Retrieve and load the public key from the API for password encryption."""
         url = "public_key"
         r = self.http_request("GET", url)
 
@@ -140,6 +199,15 @@ class TheSimpleClient:
         self._publicKey = load_pem_public_key(pubkey_pem.encode("utf-8"))
 
     def getThermostatIds(self, locationIndex=0):
+        """Retrieve thermostat IDs for the specified location index.
+
+        Args:
+            locationIndex: The index of the location to retrieve thermostat IDs from (default is 0).
+
+        Returns:
+            A list of thermostat IDs for the specified location.
+
+        """
         url = "user"
         r = self.http_request("GET", url, None, True)
 
@@ -151,6 +219,7 @@ class TheSimpleClient:
         return r.json()["thermostatIdList"]
 
     def getToken(self):
+        """Obtain an access token from TheSimple/Ecofactor API using the current authentication details."""
         _LOGGER.debug("getToken")
 
         self.clearToken()
@@ -190,6 +259,22 @@ class TheSimpleClient:
             )
 
     def http_request(self, method, req_url, json_req_body=None, authenticated=False):
+        """Make an HTTP request to TheSimple/Ecofactor API.
+
+        Args:
+            method: The HTTP method to use ("GET", "PATCH", "PUT", "DELETE").
+            req_url: The endpoint URL (relative to base URL).
+            json_req_body: Optional JSON body for the request.
+            authenticated: Whether to include authentication headers.
+
+        Raises:
+            AuthError: If authentication is required but no token is present.
+            APIError: If the HTTP response is not successful.
+
+        Returns:
+            The HTTP response object.
+
+        """
         _LOGGER.debug(
             "HTTP request (method: %s, url: %s, json: %s, authenticated: %s)",
             method,
@@ -232,7 +317,16 @@ class TheSimpleClient:
 
 
 class TheSimpleThermostat:
-    def __init__(self, client, thermostat_id):
+    """Represents a thermostat device managed via TheSimple/Ecofactor API."""
+
+    def __init__(self, client, thermostat_id) -> None:
+        """Initialize a TheSimpleThermostat instance with the given client and thermostat ID.
+
+        Args:
+            client: The TheSimpleClient instance used for API communication.
+            thermostat_id: The ID of the thermostat to manage.
+
+        """
         self._thermostat_id = thermostat_id
         self._client = client
         self._fan_mode = None
@@ -262,85 +356,106 @@ class TheSimpleThermostat:
 
     @property
     def client(self):
+        """Return the TheSimpleClient instance used for API communication."""
         return self._client
 
     @property
     def connected(self):
+        """Return whether the thermostat is currently connected."""
         return self._connected
 
     @property
     def cool_setpoint(self):
+        """Return the current cool setpoint temperature."""
         return self._cool_setpoint
 
     @property
     def current_temp(self):
+        """Return the current temperature reported by the thermostat."""
         return self._current_temp
 
     @property
     def preset_mode(self):
+        """Return the current preset mode of the thermostat."""
         return self._preset_mode
 
     @property
     def fan_mode(self):
+        """Return the current fan mode of the thermostat."""
         return self._fan_mode
 
     @property
     def fan_state(self):
+        """Return the current fan state of the thermostat."""
         return self.fan_state
 
     @property
     def heat_setpoint(self):
+        """Return the current heat setpoint temperature."""
         return self._heat_setpoint
 
     @property
     def hvacMode(self):
+        """Return the current HVAC mode of the thermostat."""
         return self._hvac_mode
 
     @property
     def hvacState(self):
+        """Return the current HVAC state of the thermostat."""
         return self._hvac_state
 
     @property
     def location_id(self):
+        """Return the location ID associated with this thermostat."""
         return self._location_id
 
     @property
     def last_update(self):
+        """Return the timestamp of the last update from the thermostat."""
         return self._last_update
 
     @property
     def maxTemp(self):
+        """Return the maximum temperature supported by the thermostat."""
         return self._max_temp
 
     @property
     def minTemp(self):
+        """Return the minimum temperature supported by the thermostat."""
         return self._min_temp
 
     @property
     def name(self):
+        """Return the name of the thermostat."""
         return self._name
 
     @property
     def setpoint_reason(self):
+        """Return the reason for the current setpoint."""
         return self._setpoint_reason
 
     @property
     def supportedModes(self):
+        """Return the supported HVAC modes for the thermostat."""
         return self._supported_modes
 
     @property
     def thermostat_id(self):
+        """Return the thermostat ID."""
         return self._thermostat_id
 
     @property
     def away_cool_setpoint(self):
+        """Return the away cool setpoint temperature."""
         return self._away_cool_setpoint
 
     @property
     def away_heat_setpoint(self):
+        """Return the away heat setpoint temperature."""
         return self._away_heat_setpoint
 
     def get_metadata(self):
+        """Retrieve and update thermostat metadata from the API."""
         url = f"thermostat/{self._thermostat_id}"
 
         r = self._client.http_request("GET", url, None, True)
@@ -357,6 +472,7 @@ class TheSimpleThermostat:
         self._supported_modes = r_json["hvac_control"]
 
     def get_away_settings(self):
+        """Retrieve and update the away settings for the thermostat from the API."""
         url = f"location/{self._location_id}/away_settings"
 
         r = self._client.http_request("GET", url, None, True)
@@ -367,6 +483,15 @@ class TheSimpleThermostat:
         self._away_heat_setpoint = float(r_json["heat_setpoint"])
 
     def set_fan_mode(self, fan_mode):
+        """Set the fan mode for the thermostat.
+
+        Args:
+            fan_mode: The fan mode to set (FAN_ON or FAN_AUTO).
+
+        Raises:
+            TheSimpleError: If an invalid fan mode is provided.
+
+        """
         if fan_mode == FAN_ON:
             set_fan_mode = "on"
         elif fan_mode == FAN_AUTO:
@@ -383,6 +508,15 @@ class TheSimpleThermostat:
         self._fan_mode = fan_mode
 
     def set_mode(self, mode):
+        """Set the HVAC mode for the thermostat.
+
+        Args:
+            mode: The HVAC mode to set (HVACMode.COOL, HVACMode.HEAT, HVACMode.AUTO, HVACMode.OFF).
+
+        Raises:
+            TheSimpleError: If an invalid HVAC mode is provided.
+
+        """
         if mode == HVACMode.COOL:
             set_mode = "cool"
         elif mode == HVACMode.HEAT:
@@ -401,6 +535,15 @@ class TheSimpleThermostat:
         self._client.http_request("PATCH", url, json_req, True)
 
     def set_temp(self, temp):
+        """Set the temperature setpoint for the thermostat.
+
+        Args:
+            temp: The target temperature to set.
+
+        Raises:
+            TheSimpleError: If the current HVAC mode is not supported for setting temperature.
+
+        """
         if temp < self._min_temp or temp > self._max_temp:
             return
 
@@ -430,6 +573,15 @@ class TheSimpleThermostat:
             self._heat_setpoint = int(temp)
 
     def set_preset_mode(self, preset):
+        """Set the preset mode for the thermostat.
+
+        Args:
+            preset: The preset mode to set (PRESET_AWAY or PRESET_NONE).
+
+        Raises:
+            TheSimpleError: If an invalid preset mode is provided.
+
+        """
         if preset not in [PRESET_AWAY, PRESET_NONE]:
             raise TheSimpleError(f"Invalid HVAC mode: {preset}")
 
@@ -458,6 +610,7 @@ class TheSimpleThermostat:
             self._preset_mode = PRESET_NONE
 
     def refresh(self):
+        """Refresh the thermostat state from the API and update internal attributes."""
         url = f"thermostat/{self._thermostat_id}/state"
 
         r = self._client.http_request("GET", url, None, True)
