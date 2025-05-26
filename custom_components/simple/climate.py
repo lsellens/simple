@@ -1,4 +1,4 @@
-"""nvenergy integration"""
+"""simple integration"""
 
 import logging
 from typing import Any
@@ -37,14 +37,14 @@ async def async_setup_platform(
     async_add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Initialize nvenergy thermostats."""
-    _LOGGER.debug("Creating NVE Thermostats")
+    """Initialize simple thermostats."""
+    _LOGGER.debug("Creating simple Thermostats")
 
     if not config.get(CONF_USERNAME):
-        raise NVEThermostatConfigError(f"No {CONF_USERNAME} config parameter provided.")
+        raise SimpleThermostatConfigError(f"No {CONF_USERNAME} config parameter provided.")
 
     if not config.get(CONF_PASSWORD):
-        raise NVEThermostatConfigError(f"No {CONF_PASSWORD} config parameter provided.")
+        raise SimpleThermostatConfigError(f"No {CONF_PASSWORD} config parameter provided.")
 
     client = TheSimpleClient(BASE_URL)
     _LOGGER.info("Authenticating")
@@ -53,35 +53,35 @@ async def async_setup_platform(
     )
 
     thermostat_ids = await hass.async_add_executor_job(client.getThermostatIds)
-    nve_thermostats = []
+    simple_thermostats = []
 
     for thermostat_id in thermostat_ids:
         simple_thermostat = await hass.async_add_executor_job(
             client.createThermostat, thermostat_id
         )
-        nve_thermostat = NVEThermostat(simple_thermostat)
-        nve_thermostats.append(nve_thermostat)
+        simple_thermostat = SimpleThermostat(simple_thermostat)
+        simple_thermostats.append(simple_thermostat)
 
-    async_add_entities(nve_thermostats)
+    async_add_entities(simple_thermostats)
     return True
 
 
-class NVEThermostatError(Exception):
-    """Base exception class for NVEThermostat errors."""
+class SimpleThermostatError(Exception):
+    """Base exception class for SimpleThermostat errors."""
 
 
-class NVEThermostatConfigError(NVEThermostatError):
+class SimpleThermostatConfigError(SimpleThermostatError):
     """Raised for configuration-related errors."""
 
 
-class NVEThermostat(ClimateEntity):
-    """Representation of an NVE thermostat."""
+class SimpleThermostat(ClimateEntity):
+    """Representation of an Simple thermostat."""
 
     def __init__(
         self, thesimplethermostat: TheSimpleClient, name: str | None = None
     ) -> None:
-        """Initialize the NVEThermostat entity."""
-        _LOGGER.debug("Init NVE Thermostat class")
+        """Initialize the SimpleThermostat entity."""
+        _LOGGER.debug("Init Simple Thermostat class")
         self._thermostat = thesimplethermostat
         self._name = name
 
@@ -95,7 +95,7 @@ class NVEThermostat(ClimateEntity):
         """Return additional state attributes."""
         return {
             "setpoint_reason": self._thermostat.setpoint_reason,
-            "nve_thermostat_id": self._thermostat.thermostat_id,
+            "simple_thermostat_id": self._thermostat.thermostat_id,
         }
 
     @property
@@ -279,5 +279,5 @@ class NVEThermostat(ClimateEntity):
             _LOGGER.debug("Retrying... (%d attempts left)", retries)
 
         if not success:
-            raise NVEThermostatError("Refresh failed after three attempts.")
+            raise SimpleThermostatError("Refresh failed after three attempts.")
 
