@@ -6,7 +6,7 @@
   "dependencies": ["http"],
   "documentation": "https://github.com/lsellens/simple/",
   "issue_tracker": "https://github.com/lsellens/simple/issues",
-  "integration_type": "entity",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
   "requirements": ["requests>=2.26.0", "cryptography>=3.4.7"],
   "version":"1.0.0"
