@@ -1,4 +1,4 @@
-"""simple integration"""
+"""simple integration."""
 
 import logging
 from typing import Any
@@ -85,7 +85,7 @@ class SimpleThermostat(ClimateEntity):
         self._name = name
 
     @property
-    def current_temperature(self) -> float:
+    def current_temperature(self) -> float | None:
         """Return the current temperature."""
         return self._thermostat.current_temp
 
@@ -125,15 +125,13 @@ class SimpleThermostat(ClimateEntity):
         return state_to_action.get(simpletherm_state)
 
     @property
-    def hvac_mode(self) -> HVACMode:
+    def hvac_mode(self) -> HVACMode | None:
         """Return the current mode."""
         simpletherm_mode = self._thermostat.hvacMode
 
         if simpletherm_mode in ["auto", "autocool", "autoheat"]:
             return HVACMode.AUTO
-        else:
-            # You should likely map other modes here as well
-            return simpletherm_mode
+        return simpletherm_mode
 
     @property
     def hvac_modes(self) -> list[HVACMode]:
@@ -150,7 +148,7 @@ class SimpleThermostat(ClimateEntity):
         return modes
 
     @property
-    def preset_modes(self) -> list[str]:
+    def preset_modes(self) -> list[str] | None:
         """Return list of supported preset modes."""
         return [PRESET_AWAY, PRESET_NONE]
 
