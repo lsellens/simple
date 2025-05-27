@@ -210,7 +210,7 @@ class SimpleThermostat(ClimateEntity):
     @property
     def unique_id(self) -> str:
         """Return a unique ID for the thermostat."""
-        return self._thermostat.thermostat_id
+        return str(self._thermostat.thermostat_id)
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         """Set a target mode."""
