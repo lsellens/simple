@@ -63,7 +63,6 @@ async def async_setup_platform(
         simple_thermostats.append(simple_thermostat)
 
     async_add_entities(simple_thermostats)
-    return True
 
 
 class SimpleThermostatError(Exception):
