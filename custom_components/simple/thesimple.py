@@ -8,6 +8,7 @@ import re
 import time
 
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
 import requests
 
@@ -165,7 +166,14 @@ class TheSimpleClient:
         Returns:
             The base64-encoded encrypted password string.
 
+        Raises:
+            TheSimpleError: If the public key is not an RSA public key.
+
         """
+
+        if self._publicKey is None or not isinstance(self._publicKey, RSAPublicKey):
+            raise TheSimpleError("Public key is not a valid RSA public key")
+
         encryptedPwBytes = self._publicKey.encrypt(
             password.encode("utf-8"), padding.PKCS1v15()
         )
@@ -299,6 +307,8 @@ class TheSimpleClient:
             r = self.httpSess.put(url, json=json_req_body, headers=reqheaders)
         elif method == "DELETE":
             r = self.httpSess.delete(url, json=json_req_body, headers=reqheaders)
+        else:
+            raise APIError(f"Unsupported HTTP method: {method}")
 
         _LOGGER.debug(
             "HTTP Response (status code: %s, response: %s)", r.status_code, r.text
