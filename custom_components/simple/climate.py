@@ -1,4 +1,4 @@
-"""simple integration."""
+"""The Simple WiFi Thermostat integration."""
 
 import logging
 from typing import Any
@@ -14,52 +14,34 @@ from homeassistant.components.climate import (
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    ATTR_TEMPERATURE,
-    CONF_PASSWORD,
-    CONF_USERNAME,
-    PRECISION_TENTHS,
-    UnitOfTemperature,
-)
+from homeassistant.const import ATTR_TEMPERATURE, PRECISION_TENTHS, UnitOfTemperature
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import DiscoveryInfoType
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import BASE_URL
+from .const import DOMAIN
 from .thesimple import APIError, AuthError, TheSimpleClient, TheSimpleError
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Initialize simple thermostats."""
-    _LOGGER.debug("Creating simple Thermostats")
+    """Set up simple thermostats from a config entry."""
+    client: TheSimpleClient = hass.data[DOMAIN][entry.entry_id]
 
-    if not config.get(CONF_USERNAME):
-        raise SimpleThermostatConfigError(f"No {CONF_USERNAME} config parameter provided.")
-
-    if not config.get(CONF_PASSWORD):
-        raise SimpleThermostatConfigError(f"No {CONF_PASSWORD} config parameter provided.")
-
-    client = TheSimpleClient(BASE_URL)
-    _LOGGER.info("Authenticating")
-    await hass.async_add_executor_job(
-        client.auth, config[CONF_USERNAME], config[CONF_PASSWORD]
-    )
-
+    # Discover thermostats (sync call, run in executor)
     thermostat_ids = await hass.async_add_executor_job(client.getThermostatIds)
     simple_thermostats = []
 
     for thermostat_id in thermostat_ids:
-        simple_thermostat = await hass.async_add_executor_job(
+        # Create the thermostat object (sync call, run in executor)
+        thermostat_obj = await hass.async_add_executor_job(
             client.createThermostat, thermostat_id
         )
-        simple_thermostat = SimpleThermostat(simple_thermostat)
+        simple_thermostat = SimpleThermostat(thermostat_obj)
         simple_thermostats.append(simple_thermostat)
 
     async_add_entities(simple_thermostats)
@@ -76,9 +58,7 @@ class SimpleThermostatConfigError(SimpleThermostatError):
 class SimpleThermostat(ClimateEntity):
     """Representation of an Simple thermostat."""
 
-    def __init__(
-        self, thesimplethermostat: TheSimpleClient, name: str | None = None
-    ) -> None:
+    def __init__(self, thesimplethermostat: Any, name: str | None = None) -> None:
         """Initialize the SimpleThermostat entity."""
         _LOGGER.debug("Init Simple Thermostat class")
         self._thermostat = thesimplethermostat
@@ -142,7 +122,10 @@ class SimpleThermostat(ClimateEntity):
             modes.append(HVACMode.COOL)
         if "HEAT" in self._thermostat.supportedModes:
             modes.append(HVACMode.HEAT)
-        if "COOL" in self._thermostat.supportedModes and "HEAT" in self._thermostat.supportedModes:
+        if (
+            "COOL" in self._thermostat.supportedModes
+            and "HEAT" in self._thermostat.supportedModes
+        ):
             modes.append(HVACMode.AUTO)
 
         return modes
@@ -277,4 +260,3 @@ class SimpleThermostat(ClimateEntity):
 
         if not success:
             raise SimpleThermostatError("Refresh failed after three attempts.")
-

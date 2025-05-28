@@ -2,12 +2,11 @@
   "domain": "simple",
   "name": "The Simple WiFi Thermostat",
   "codeowners": ["@lsellens"],
-  "config_flow": false,
+  "config_flow": true,
   "dependencies": ["http"],
   "documentation": "https://github.com/lsellens/simple/",
-  "issue_tracker": "https://github.com/lsellens/simple/issues",
-  "integration_type": "hub",
   "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/lsellens/simple/issues",
   "requirements": ["requests>=2.26.0", "cryptography>=3.4.7"],
-  "version":"1.0.0"
+  "version":"2.0.0"
 }

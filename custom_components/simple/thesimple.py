@@ -649,4 +649,3 @@ class TheSimpleThermostat:
         else:
             self._away_details = None
             self._preset_mode = PRESET_NONE
-

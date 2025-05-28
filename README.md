@@ -1,8 +1,13 @@
-# simple
+# The Simple WiFi Thermostat Home Assistant integration.
+[![](https://img.shields.io/github/release/lsellens/simple/all.svg?style=for-the-badge)](https://github.com/lsellens/simple/releases)
+[![](https://img.shields.io/github/license/lsellens/simple?style=for-the-badge)](LICENSE)
+[![](https://img.shields.io/badge/MAINTAINER-%40lsellens-red?style=for-the-badge)](https://github.com/lsellens)
 
-## Who
+This integration is for users of Simple WiFi thermostat made by "[TheSimple](https://thesimple.com/)" which is accessed through [ecofactor.com](https://www.ecofactor.com).
 
-This integration is for users of Simple WiFi thermostat made by "[TheSimple](https://thesimple.com/)" which is accessed through [ecofactor.com](https://www.ecofactor.com). The interface for this thermostat looks like:
+![Simple Thermostat White](images/s100_white.png)
+
+The interface for this thermostat looks like:
 
 ![Example of simple Thermostat interface](images/interface-example.png)
 
@@ -21,17 +26,7 @@ This integration is for users of Simple WiFi thermostat made by "[TheSimple](htt
 3. In the `custom_components` directory (folder) create a new folder called `simple`.
 4. Download _all_ the files from the `custom_components/simple/` directory (folder) in this repository.
 5. Place the files you downloaded in the new directory (folder) you created.
-6. Edit your `configuration.yaml` file placing in the configuration below.
 6. Restart Home Assistant
-
-## Configuration.yaml entry
-
-```
-climate:
-  - platform: simple
-    username: "sample@user.com"
-    password: "password goes here"
-```
 
 ## Limitations
 
