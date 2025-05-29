@@ -35,9 +35,9 @@ or
 
 ## Setup
 
-1. Once installed, navigate to `Settings`/`Devices & services`.
-2. Click `+ ADD INTEGRATION`
-3. Search for "The Simple WiFi Thermostat"
-4. Enter `UserName`/`Password` for [thesimple.com](https://thesimple.com/)
+1. Once installed, navigate to **Settings**/**Devices & services**.
+2. Click **+ ADD INTEGRATION**
+3. Search for "`The Simple WiFi Thermostat`"
+4. Enter **UserName**/**Password** for [thesimple.com](https://thesimple.com/)
 
 All thermostats associated with your account should appear in Home Assistant
