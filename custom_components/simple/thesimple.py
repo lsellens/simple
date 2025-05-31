@@ -593,7 +593,7 @@ class TheSimpleThermostat:
 
         """
         if preset not in [PRESET_AWAY, PRESET_NONE]:
-            raise TheSimpleError(f"Invalid HVAC mode: {preset}")
+            raise TheSimpleError(f"Invalid preset mode: {preset}")
 
         # Check if the thermostat is off
         if self._hvac_mode == "off":
