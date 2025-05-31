@@ -397,7 +397,7 @@ class TheSimpleThermostat:
     @property
     def fan_state(self):
         """Return the current fan state of the thermostat."""
-        return self.fan_state
+        return self._fan_state
 
     @property
     def heat_setpoint(self):
