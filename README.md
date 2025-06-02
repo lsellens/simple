@@ -1,10 +1,11 @@
 # The Simple WiFi Thermostat Home Assistant integration.
-[![](https://img.shields.io/github/downloads/lsellens/thesimple-thermostat/total?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases)
-[![](https://img.shields.io/github/release/lsellens/thesimple-thermostat/all?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases/latest)
-[![](https://img.shields.io/github/downloads/lsellens/thesimple-thermostat/latest/total?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases/latest)
-[![](https://img.shields.io/github/issues/lsellens/thesimple-thermostat?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/issues)
-[![](https://img.shields.io/github/actions/workflow/status/lsellens/thesimple-thermostat/validate.yml?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/actions)
-[![](https://img.shields.io/github/license/lsellens/thesimple-thermostat?style=for-the-badge)](LICENSE)
+[![HACS](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://hacs.xyz)
+[![Download Count](https://img.shields.io/github/downloads/lsellens/thesimple-thermostat/total?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases)
+[![Latest Release Number](https://img.shields.io/github/release/lsellens/thesimple-thermostat/all?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases/latest)
+[![Latest Release Download Count](https://img.shields.io/github/downloads/lsellens/thesimple-thermostat/latest/total?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/releases/latest)
+[![Open Issues](https://img.shields.io/github/issues/lsellens/thesimple-thermostat?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/issues)
+[![Validation Status](https://img.shields.io/github/actions/workflow/status/lsellens/thesimple-thermostat/validate.yml?style=for-the-badge)](https://github.com/lsellens/thesimple-thermostat/actions)
+[![License](https://img.shields.io/github/license/lsellens/thesimple-thermostat?style=for-the-badge)](LICENSE)
 
 This integration is for users of Simple WiFi thermostat made by "[TheSimple](https://thesimple.com/)" which is accessed through [ecofactor.com](https://www.ecofactor.com).
 
@@ -12,17 +13,12 @@ This integration is for users of Simple WiFi thermostat made by "[TheSimple](htt
 
 ## Installation via HACS
 
-Click here
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=thesimple-thermostat&category=integration&owner=lsellens)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?repository=thesimple-thermostat&owner=lsellens)
 
 or
-
-1. In Home Assistant, navigate to [**HACS**](https://www.hacs.xyz/docs/use/download/download/).
-2. Click the three dots in the top right corner and select **Custom repositories**.
-3. Enter the repository URL: `https://github.com/lsellens/thesimple-thermostat` and select **Integration** as the category.
-4. Click **Add**.
-5. The integration will now be available for installation in HACS.
+1. In Home Assistant, navigate to [**HACS**](https://www.hacs.xyz/docs/use/download/download/)
+2. Search for and **install** `The Simple WiFi Thermostat`
 
 ## Manual Installation
 
@@ -35,6 +31,10 @@ or
 
 ## Setup
 
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=simple)
+
+or
 1. Once installed, navigate to **Settings**/**Devices & services**.
 2. Click **+ ADD INTEGRATION**
 3. Search for "`The Simple WiFi Thermostat`"
