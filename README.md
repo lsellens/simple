@@ -9,7 +9,7 @@
 
 This integration is for users of Simple WiFi thermostat made by "[TheSimple](https://thesimple.com/)" which is accessed through [ecofactor.com](https://www.ecofactor.com).
 
-![Simple Thermostat White](images/s100_white.png)
+<img src="images/s100_black.png" alt="Simple Thermostat Black" width="25%"> <img src="images/s100_white.png" alt="Simple Thermostat White" width="25%">
 
 ## Installation via HACS
 
